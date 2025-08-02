@@ -1,0 +1,87 @@
+version: '3.8'
+services:
+  mailserver:
+    image: mailserver/docker-mailserver:latest
+    container_name: mailserver
+    hostname: mail
+    domainname: growinar.com
+    env_file: .env
+    ports:
+      - "25:25"
+      - "465:465"
+      - "587:587"
+      - "993:993"
+    volumes:
+      - ./maildata:/var/mail
+      - ./mailstate:/var/mail-state
+      - ./config/:/tmp/docker-mailserver/
+    cap_add:
+      - NET_ADMIN
+    restart: unless-stopped
+
+  n8n:
+    image: n8nio/n8n
+    restart: unless-stopped
+    environment:
+      - N8N_BASIC_AUTH_ACTIVE=true
+      - N8N_BASIC_AUTH_USER=admin
+      - N8N_BASIC_AUTH_PASSWORD=India@123!
+    ports:
+      - "5678:5678"
+    volumes:
+      - ./n8n_data:/home/node/.n8n
+
+  truemail:
+    image: truemail/truemail-rb
+    ports:
+      - "9292:9292"
+
+  ollama:
+    image: ollama/ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ./ollama:/root/.ollama
+
+  open-webui:
+    image: ghcr.io/open-webui/open-webui:main
+    ports:
+      - "3000:8080"
+    environment:
+      - OLLAMA_API_BASE_URL=http://ollama:11434
+    volumes:
+      - ./webui:/app/backend/data
+
+  roundcube:
+    image: roundcube/roundcube:latest
+    environment:
+      - ROUNDCUBE_DEFAULT_HOST=ssl://mail.growinar.com
+    ports:
+      - "8082:80"
+    volumes:
+      - ./roundcube:/var/roundcube
+
+  goaccess:
+    image: allinurl/goaccess
+    ports:
+      - "7890:7890"
+    volumes:
+      - ./logs:/logs
+
+  netdata:
+    image: netdata/netdata
+    ports:
+      - "19999:19999"
+    cap_add:
+      - SYS_PTRACE
+    security_opt:
+      - apparmor:unconfined
+    volumes:
+      - netdataconfig:/etc/netdata
+      - netdatalib:/var/lib/netdata
+      - netdatacache:/var/cache/netdata
+
+volumes:
+  netdataconfig:
+  netdatalib:
+  netdatacache:
